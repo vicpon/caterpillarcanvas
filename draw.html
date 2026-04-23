@@ -491,6 +491,90 @@
   }
   .gallery-link:hover { color: var(--accent); background: transparent; border: none; }
   .save-flash { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+
+  .start-frame-row { display: flex; align-items: center; gap: 32px; margin-top: 6px; }
+  .picture-frame {
+    width: 160px; height: 210px;
+    padding: 14px;
+    background:
+      linear-gradient(145deg, #b4873f 0%, #8b5f28 45%, #6a4418 100%);
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 210, 140, 0.35),
+      inset 0 0 0 14px rgba(0, 0, 0, 0.25),
+      0 18px 36px rgba(0, 0, 0, 0.55);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  .picture-frame:hover { transform: translateY(-4px) rotate(-1deg); }
+  .picture-frame.right:hover { transform: translateY(-4px) rotate(1deg); }
+  .picture-frame-inner {
+    width: 100%; height: 100%;
+    background: #efe8d8;
+    border: 1px solid rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .picture-frame-inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .picture-frame-empty {
+    color: #7a6850; font-size: 10px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: center; padding: 14px;
+    font-weight: 600; line-height: 1.4;
+  }
+  .picture-frame-empty .plus { display: block; font-size: 34px; color: #a08b6a; margin-bottom: 6px; font-weight: 300; }
+
+  #framePicker {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 250;
+    animation: fadeIn 0.15s ease-out;
+  }
+  #framePicker.hidden { display: none; }
+  .frame-picker-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: min(680px, 92vw);
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  }
+  .frame-picker-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px; font-weight: 600; color: var(--text);
+  }
+  .frame-picker-grid {
+    flex: 1; overflow-y: auto;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .frame-picker-item {
+    aspect-ratio: 4/3;
+    padding: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .frame-picker-item:hover { transform: scale(1.03); border-color: var(--accent); }
+  .frame-picker-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .frame-picker-empty { grid-column: 1 / -1; padding: 40px 10px; text-align: center; color: var(--text-mute); font-size: 13px; }
+  .frame-picker-footer {
+    display: flex; justify-content: flex-end;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
@@ -511,19 +595,39 @@
     <div class="start-subtitle">Welcome</div>
     <div class="start-title">Draw</div>
     <div class="start-subtitle">Choose a mode</div>
-    <div class="start-options">
-      <button class="start-card" id="startStandard">
-        <div class="start-card-icon">✎</div>
-        <div class="start-card-title">Standard Drawing</div>
-        <div class="start-card-desc">A blank canvas, all yours. Start sketching right away.</div>
-      </button>
-      <button class="start-card" id="startThemed">
-        <div class="start-card-icon">❝ ❞</div>
-        <div class="start-card-title">Themed Drawing</div>
-        <div class="start-card-desc">Get a random prompt in a speech bubble to spark your drawing.</div>
-      </button>
+    <div class="start-frame-row">
+      <div class="picture-frame" data-frame-id="left" title="Click to add a picture from your gallery">
+        <div class="picture-frame-inner"></div>
+      </div>
+      <div class="start-options">
+        <button class="start-card" id="startStandard">
+          <div class="start-card-icon">✎</div>
+          <div class="start-card-title">Standard Drawing</div>
+          <div class="start-card-desc">A blank canvas, all yours. Start sketching right away.</div>
+        </button>
+        <button class="start-card" id="startThemed">
+          <div class="start-card-icon">❝ ❞</div>
+          <div class="start-card-title">Themed Drawing</div>
+          <div class="start-card-desc">Get a random prompt in a speech bubble to spark your drawing.</div>
+        </button>
+      </div>
+      <div class="picture-frame right" data-frame-id="right" title="Click to add a picture from your gallery">
+        <div class="picture-frame-inner"></div>
+      </div>
     </div>
     <button id="startGallery" class="gallery-link">View Gallery</button>
+  </div>
+  <div id="framePicker" class="hidden">
+    <div class="frame-picker-card">
+      <div class="frame-picker-header">
+        <span>Pick a picture from your gallery</span>
+        <button id="framePickerClose">✕</button>
+      </div>
+      <div id="framePickerGrid" class="frame-picker-grid"></div>
+      <div class="frame-picker-footer">
+        <button id="frameClearBtn">Remove picture</button>
+      </div>
+    </div>
   </div>
   <div id="galleryView" class="hidden">
     <div class="gallery-header">
@@ -1609,7 +1713,94 @@
   document.getElementById('galleryClose').addEventListener('click', () => {
     galleryView.classList.add('hidden');
     startMenu.classList.remove('hidden');
+    renderFrames();
   });
+
+  const FRAMES_KEY = 'draw-frames-v1';
+  const framePicker = document.getElementById('framePicker');
+  const framePickerGrid = document.getElementById('framePickerGrid');
+  let activeFrameId = null;
+
+  function loadFrames() {
+    try { return JSON.parse(localStorage.getItem(FRAMES_KEY) || '{}'); } catch { return {}; }
+  }
+  function persistFrames(map) {
+    try { localStorage.setItem(FRAMES_KEY, JSON.stringify(map)); } catch {}
+  }
+
+  function renderFrames() {
+    const assignments = loadFrames();
+    const gallery = loadGallery();
+    document.querySelectorAll('.picture-frame').forEach(frame => {
+      const id = frame.dataset.frameId;
+      const item = assignments[id] ? gallery.find(x => x.id === assignments[id]) : null;
+      const inner = frame.querySelector('.picture-frame-inner');
+      inner.innerHTML = '';
+      if (item) {
+        const img = document.createElement('img');
+        img.src = item.dataUrl;
+        img.alt = item.theme || 'Gallery picture';
+        inner.appendChild(img);
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'picture-frame-empty';
+        empty.innerHTML = '<span class="plus">+</span>Add a picture from your gallery';
+        inner.appendChild(empty);
+      }
+    });
+  }
+
+  function openFramePicker(frameId) {
+    activeFrameId = frameId;
+    const items = loadGallery();
+    framePickerGrid.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'frame-picker-empty';
+      empty.textContent = 'No gallery drawings yet. Save one from a drawing first.';
+      framePickerGrid.appendChild(empty);
+    } else {
+      items.forEach(item => {
+        const b = document.createElement('button');
+        b.className = 'frame-picker-item';
+        b.title = item.theme || 'Drawing';
+        const img = document.createElement('img');
+        img.src = item.dataUrl;
+        b.appendChild(img);
+        b.addEventListener('click', () => {
+          const map = loadFrames();
+          map[activeFrameId] = item.id;
+          persistFrames(map);
+          closeFramePicker();
+          renderFrames();
+        });
+        framePickerGrid.appendChild(b);
+      });
+    }
+    framePicker.classList.remove('hidden');
+  }
+  function closeFramePicker() {
+    framePicker.classList.add('hidden');
+    activeFrameId = null;
+  }
+
+  document.querySelectorAll('.picture-frame').forEach(frame => {
+    frame.addEventListener('click', () => openFramePicker(frame.dataset.frameId));
+  });
+  document.getElementById('framePickerClose').addEventListener('click', closeFramePicker);
+  document.getElementById('frameClearBtn').addEventListener('click', () => {
+    if (!activeFrameId) return;
+    const map = loadFrames();
+    delete map[activeFrameId];
+    persistFrames(map);
+    closeFramePicker();
+    renderFrames();
+  });
+
+  renderFrames();
+
+  const _origMenuShow = document.getElementById('menuBtn');
+  _origMenuShow.addEventListener('click', renderFrames);
 </script>
 </body>
 </html>
