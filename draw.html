@@ -493,6 +493,31 @@
   .save-flash { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 
   .start-frame-row { display: flex; align-items: center; gap: 32px; margin-top: 6px; }
+  .frame-slot {
+    position: relative;
+    flex-shrink: 0;
+    transition: transform 0.15s ease-out;
+  }
+  .frame-slot.dragging { transition: none; z-index: 20; }
+  .frame-controls {
+    position: absolute;
+    bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+    display: flex; align-items: center; gap: 8px;
+    white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 5;
+  }
+  .frame-slot:hover .frame-controls, .frame-slot.dragging .frame-controls { opacity: 1; pointer-events: auto; }
+  .frame-controls .ov-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+  .frame-controls input[type="range"] { width: 80px; }
+  .frame-controls .value-tag { font-size: 10px; }
   .picture-frame {
     width: 170px; height: 220px;
     padding: 12px;
@@ -500,15 +525,17 @@
     border: 1px solid var(--border-strong);
     border-radius: 12px;
     position: relative;
-    cursor: pointer;
+    cursor: grab;
+    transform-origin: center center;
     box-shadow:
       0 14px 30px rgba(0, 0, 0, 0.4),
       0 0 0 1px rgba(255, 255, 255, 0.02) inset;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    flex-shrink: 0;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    touch-action: none;
+    user-select: none;
   }
-  .picture-frame:hover {
-    transform: translateY(-5px);
+  .picture-frame:active { cursor: grabbing; }
+  .frame-slot:hover .picture-frame {
     border-color: var(--accent);
     box-shadow:
       0 22px 44px rgba(0, 0, 0, 0.5),
@@ -604,8 +631,15 @@
     <div class="start-title">Draw</div>
     <div class="start-subtitle">Choose a mode</div>
     <div class="start-frame-row">
-      <div class="picture-frame" data-frame-id="left" title="Click to add a picture from your gallery">
-        <div class="picture-frame-inner"></div>
+      <div class="frame-slot" data-frame-id="left">
+        <div class="frame-controls">
+          <span class="ov-label">Rotate</span>
+          <input type="range" class="frame-rotate" min="-180" max="180" value="0">
+          <span class="value-tag frame-rotate-val">0°</span>
+        </div>
+        <div class="picture-frame" data-frame-id="left" title="Drag to move · click to pick a picture">
+          <div class="picture-frame-inner"></div>
+        </div>
       </div>
       <div class="start-options">
         <button class="start-card" id="startStandard">
@@ -619,8 +653,15 @@
           <div class="start-card-desc">Get a random prompt in a speech bubble to spark your drawing.</div>
         </button>
       </div>
-      <div class="picture-frame right" data-frame-id="right" title="Click to add a picture from your gallery">
-        <div class="picture-frame-inner"></div>
+      <div class="frame-slot" data-frame-id="right">
+        <div class="frame-controls">
+          <span class="ov-label">Rotate</span>
+          <input type="range" class="frame-rotate" min="-180" max="180" value="0">
+          <span class="value-tag frame-rotate-val">0°</span>
+        </div>
+        <div class="picture-frame" data-frame-id="right" title="Drag to move · click to pick a picture">
+          <div class="picture-frame-inner"></div>
+        </div>
       </div>
     </div>
     <button id="startGallery" class="gallery-link">View Gallery</button>
@@ -1730,19 +1771,40 @@
   let activeFrameId = null;
 
   function loadFrames() {
-    try { return JSON.parse(localStorage.getItem(FRAMES_KEY) || '{}'); } catch { return {}; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(FRAMES_KEY) || '{}');
+      const out = {};
+      for (const k in raw) {
+        const v = raw[k];
+        if (v && typeof v === 'object') {
+          out[k] = { itemId: v.itemId || null, dx: v.dx || 0, dy: v.dy || 0, rotation: v.rotation || 0 };
+        } else {
+          out[k] = { itemId: v, dx: 0, dy: 0, rotation: 0 };
+        }
+      }
+      return out;
+    } catch { return {}; }
   }
   function persistFrames(map) {
     try { localStorage.setItem(FRAMES_KEY, JSON.stringify(map)); } catch {}
   }
 
+  function applyFrameTransform(slot, frame, s) {
+    slot.style.transform = `translate(${s.dx}px, ${s.dy}px)`;
+    frame.style.transform = `rotate(${s.rotation}deg)`;
+  }
+
   function renderFrames() {
     const assignments = loadFrames();
     const gallery = loadGallery();
-    document.querySelectorAll('.picture-frame').forEach(frame => {
-      const id = frame.dataset.frameId;
-      const item = assignments[id] ? gallery.find(x => x.id === assignments[id]) : null;
+    document.querySelectorAll('.frame-slot').forEach(slot => {
+      const id = slot.dataset.frameId;
+      const frame = slot.querySelector('.picture-frame');
       const inner = frame.querySelector('.picture-frame-inner');
+      const rotateInput = slot.querySelector('.frame-rotate');
+      const rotateVal = slot.querySelector('.frame-rotate-val');
+      const s = assignments[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+      const item = s.itemId ? gallery.find(x => x.id === s.itemId) : null;
       inner.innerHTML = '';
       if (item) {
         const img = document.createElement('img');
@@ -1755,7 +1817,22 @@
         empty.innerHTML = '<span class="plus">+</span>Add a picture from your gallery';
         inner.appendChild(empty);
       }
+      rotateInput.value = s.rotation;
+      rotateVal.textContent = s.rotation + '°';
+      applyFrameTransform(slot, frame, s);
     });
+  }
+
+  function getFrameState(id) {
+    const map = loadFrames();
+    return map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+  }
+  function setFrameState(id, patch) {
+    const map = loadFrames();
+    const current = map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+    map[id] = { ...current, ...patch };
+    persistFrames(map);
+    return map[id];
   }
 
   function openFramePicker(frameId) {
@@ -1776,9 +1853,7 @@
         img.src = item.dataUrl;
         b.appendChild(img);
         b.addEventListener('click', () => {
-          const map = loadFrames();
-          map[activeFrameId] = item.id;
-          persistFrames(map);
+          setFrameState(activeFrameId, { itemId: item.id });
           closeFramePicker();
           renderFrames();
         });
@@ -1792,15 +1867,57 @@
     activeFrameId = null;
   }
 
-  document.querySelectorAll('.picture-frame').forEach(frame => {
-    frame.addEventListener('click', () => openFramePicker(frame.dataset.frameId));
+  document.querySelectorAll('.frame-slot').forEach(slot => {
+    const id = slot.dataset.frameId;
+    const frame = slot.querySelector('.picture-frame');
+    const rotateInput = slot.querySelector('.frame-rotate');
+    const rotateVal = slot.querySelector('.frame-rotate-val');
+
+    let drag = null;
+    let wasDragged = false;
+
+    frame.addEventListener('pointerdown', (e) => {
+      frame.setPointerCapture(e.pointerId);
+      const s = getFrameState(id);
+      drag = { startX: e.clientX, startY: e.clientY, origDx: s.dx, origDy: s.dy };
+      wasDragged = false;
+      slot.classList.add('dragging');
+    });
+    frame.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      if (!wasDragged && Math.hypot(dx, dy) > 4) wasDragged = true;
+      if (wasDragged) {
+        const s = setFrameState(id, { dx: drag.origDx + dx, dy: drag.origDy + dy });
+        applyFrameTransform(slot, frame, s);
+      }
+    });
+    const endDrag = (e) => {
+      slot.classList.remove('dragging');
+      try { frame.releasePointerCapture(e.pointerId); } catch {}
+      drag = null;
+    };
+    frame.addEventListener('pointerup', endDrag);
+    frame.addEventListener('pointercancel', endDrag);
+
+    frame.addEventListener('click', (e) => {
+      if (wasDragged) { e.preventDefault(); e.stopPropagation(); return; }
+      openFramePicker(id);
+    });
+
+    rotateInput.addEventListener('input', () => {
+      const rotation = +rotateInput.value;
+      rotateVal.textContent = rotation + '°';
+      const s = setFrameState(id, { rotation });
+      applyFrameTransform(slot, frame, s);
+    });
   });
+
   document.getElementById('framePickerClose').addEventListener('click', closeFramePicker);
   document.getElementById('frameClearBtn').addEventListener('click', () => {
     if (!activeFrameId) return;
-    const map = loadFrames();
-    delete map[activeFrameId];
-    persistFrames(map);
+    setFrameState(activeFrameId, { itemId: null });
     closeFramePicker();
     renderFrames();
   });
