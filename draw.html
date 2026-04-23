@@ -670,6 +670,27 @@
     letter-spacing: 0.04em;
   }
   .award-card.earned .award-count { color: #e5b84a; }
+
+  .profile-award-option {
+    aspect-ratio: 1; padding: 0;
+    background: var(--elevated);
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 22px; line-height: 1;
+    color: #e5b84a;
+    text-shadow: 0 0 10px rgba(229, 184, 74, 0.45);
+    min-width: auto;
+    transition: border-color 0.12s, transform 0.1s;
+  }
+  .profile-award-option:hover { border-color: var(--accent); transform: scale(1.05); }
+  .profile-award-option.selected { border-color: #e5b84a; box-shadow: 0 0 0 2px rgba(229, 184, 74, 0.55); }
+  .profile-avatar-award {
+    font-size: 22px; line-height: 1;
+    color: #e5b84a;
+    text-shadow: 0 0 10px rgba(229, 184, 74, 0.5);
+  }
   .save-flash { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 
   .start-frame-row { display: flex; align-items: center; gap: 32px; margin-top: 6px; }
@@ -1019,6 +1040,10 @@
       <div class="profile-editor-section">
         <div class="profile-editor-label">Avatar — pick from your gallery</div>
         <div id="profileAvatarGrid" class="profile-avatar-grid"></div>
+      </div>
+      <div class="profile-editor-section">
+        <div class="profile-editor-label">Or pick an earned award</div>
+        <div id="profileAwardGrid" class="profile-avatar-grid"></div>
       </div>
       <div class="profile-editor-footer">
         <button id="profileClearAvatar">Use initials</button>
@@ -2552,12 +2577,17 @@
   const profileUsernameInput = document.getElementById('profileUsernameInput');
   const profileAvatarGrid = document.getElementById('profileAvatarGrid');
   let stagedAvatarId = null;
+  let stagedAwardId = null;
 
   function loadProfile() {
     try {
       const raw = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
-      return { username: raw.username || 'Artist', avatarItemId: raw.avatarItemId || null };
-    } catch { return { username: 'Artist', avatarItemId: null }; }
+      return {
+        username: raw.username || 'Artist',
+        avatarItemId: raw.avatarItemId || null,
+        avatarAwardId: raw.avatarAwardId || null,
+      };
+    } catch { return { username: 'Artist', avatarItemId: null, avatarAwardId: null }; }
   }
   function persistProfile(p) {
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch {}
@@ -2567,6 +2597,16 @@
     const p = loadProfile();
     profileNameBtn.textContent = p.username;
     profileAvatarEl.innerHTML = '';
+    if (p.avatarAwardId && typeof AWARDS !== 'undefined') {
+      const award = AWARDS.find(a => a.id === p.avatarAwardId);
+      if (award) {
+        const span = document.createElement('span');
+        span.className = 'profile-avatar-award';
+        span.textContent = award.icon;
+        profileAvatarEl.appendChild(span);
+        return;
+      }
+    }
     if (p.avatarItemId) {
       const item = loadGallery().find(x => x.id === p.avatarItemId);
       if (item) {
@@ -2601,9 +2641,39 @@
       b.appendChild(img);
       b.addEventListener('click', () => {
         stagedAvatarId = item.id;
+        stagedAwardId = null;
         renderAvatarGrid();
+        renderAwardGrid();
       });
       profileAvatarGrid.appendChild(b);
+    });
+  }
+
+  function renderAwardGrid() {
+    const grid = document.getElementById('profileAwardGrid');
+    grid.innerHTML = '';
+    if (typeof AWARDS === 'undefined') return;
+    const stats = getAwardStats();
+    const earned = AWARDS.filter(a => computeAwardProgress(a, stats) >= a.target);
+    if (!earned.length) {
+      const empty = document.createElement('div');
+      empty.className = 'profile-avatar-empty';
+      empty.textContent = 'No awards earned yet. Check the Awards page to see your progress.';
+      grid.appendChild(empty);
+      return;
+    }
+    earned.forEach(a => {
+      const b = document.createElement('button');
+      b.className = 'profile-award-option' + (stagedAwardId === a.id ? ' selected' : '');
+      b.textContent = a.icon;
+      b.title = a.title;
+      b.addEventListener('click', () => {
+        stagedAwardId = a.id;
+        stagedAvatarId = null;
+        renderAvatarGrid();
+        renderAwardGrid();
+      });
+      grid.appendChild(b);
     });
   }
 
@@ -2611,7 +2681,9 @@
     const p = loadProfile();
     profileUsernameInput.value = p.username;
     stagedAvatarId = p.avatarItemId;
+    stagedAwardId = p.avatarAwardId;
     renderAvatarGrid();
+    renderAwardGrid();
     profileEditor.classList.remove('hidden');
     setTimeout(() => profileUsernameInput.focus(), 0);
   }
@@ -2624,11 +2696,13 @@
   document.getElementById('profileEditorClose').addEventListener('click', closeProfileEditor);
   document.getElementById('profileClearAvatar').addEventListener('click', () => {
     stagedAvatarId = null;
+    stagedAwardId = null;
     renderAvatarGrid();
+    renderAwardGrid();
   });
   document.getElementById('profileSave').addEventListener('click', () => {
     const username = (profileUsernameInput.value.trim() || 'Artist').slice(0, 30);
-    persistProfile({ username, avatarItemId: stagedAvatarId });
+    persistProfile({ username, avatarItemId: stagedAvatarId, avatarAwardId: stagedAwardId });
     closeProfileEditor();
     renderProfile();
   });
@@ -2669,12 +2743,12 @@
     }
   }
 
-  function renderAwards() {
+  function getAwardStats() {
     const gallery = loadGallery();
     const profile = loadProfile();
     const usage = loadToolUsage();
     const frames = loadFrames();
-    const stats = {
+    return {
       gallery: gallery.length,
       fiveStar: gallery.filter(x => x.rating === 5).length,
       rated: gallery.filter(x => x.rating && x.rating > 0).length,
@@ -2684,6 +2758,10 @@
       named: (profile.username && profile.username !== 'Artist') ? 1 : 0,
       framesFilled: ['left', 'right'].filter(k => frames[k] && frames[k].itemId).length,
     };
+  }
+
+  function renderAwards() {
+    const stats = getAwardStats();
     const grid = document.getElementById('awardsGrid');
     grid.innerHTML = '';
     AWARDS.forEach(a => {
