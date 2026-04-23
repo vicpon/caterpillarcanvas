@@ -1602,8 +1602,14 @@
   }
 
   function openGallery() { renderGallery(); galleryView.classList.remove('hidden'); }
-  document.getElementById('startGallery').addEventListener('click', openGallery);
-  document.getElementById('galleryClose').addEventListener('click', () => galleryView.classList.add('hidden'));
+  document.getElementById('startGallery').addEventListener('click', () => {
+    startMenu.classList.add('hidden');
+    openGallery();
+  });
+  document.getElementById('galleryClose').addEventListener('click', () => {
+    galleryView.classList.add('hidden');
+    if (!currentMode) startMenu.classList.remove('hidden');
+  });
 </script>
 </body>
 </html>
