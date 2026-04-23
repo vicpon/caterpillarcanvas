@@ -529,6 +529,7 @@
   .frame-controls .ov-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
   .frame-controls input[type="range"] { width: 80px; }
   .frame-controls .value-tag { font-size: 10px; }
+  .frame-controls .ov-divider { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
   .picture-frame {
     width: 170px; height: 220px;
     padding: 12px;
@@ -647,6 +648,10 @@
           <span class="ov-label">Rotate</span>
           <input type="range" class="frame-rotate" min="-180" max="180" value="0">
           <span class="value-tag frame-rotate-val">0°</span>
+          <span class="ov-divider"></span>
+          <span class="ov-label">Size</span>
+          <input type="range" class="frame-scale" min="50" max="200" value="100">
+          <span class="value-tag frame-scale-val">100%</span>
         </div>
         <div class="picture-frame" data-frame-id="left" title="Drag to move · click to pick a picture">
           <div class="picture-frame-inner"></div>
@@ -669,6 +674,10 @@
           <span class="ov-label">Rotate</span>
           <input type="range" class="frame-rotate" min="-180" max="180" value="0">
           <span class="value-tag frame-rotate-val">0°</span>
+          <span class="ov-divider"></span>
+          <span class="ov-label">Size</span>
+          <input type="range" class="frame-scale" min="50" max="200" value="100">
+          <span class="value-tag frame-scale-val">100%</span>
         </div>
         <div class="picture-frame" data-frame-id="right" title="Drag to move · click to pick a picture">
           <div class="picture-frame-inner"></div>
@@ -1788,9 +1797,9 @@
       for (const k in raw) {
         const v = raw[k];
         if (v && typeof v === 'object') {
-          out[k] = { itemId: v.itemId || null, dx: v.dx || 0, dy: v.dy || 0, rotation: v.rotation || 0 };
+          out[k] = { itemId: v.itemId ?? null, dx: v.dx ?? 0, dy: v.dy ?? 0, rotation: v.rotation ?? 0, scale: v.scale ?? 1 };
         } else {
-          out[k] = { itemId: v, dx: 0, dy: 0, rotation: 0 };
+          out[k] = { itemId: v, dx: 0, dy: 0, rotation: 0, scale: 1 };
         }
       }
       return out;
@@ -1802,7 +1811,7 @@
 
   function applyFrameTransform(slot, frame, s) {
     slot.style.transform = `translate(${s.dx}px, ${s.dy}px)`;
-    frame.style.transform = `rotate(${s.rotation}deg)`;
+    frame.style.transform = `rotate(${s.rotation}deg) scale(${s.scale})`;
   }
 
   function renderFrames() {
@@ -1814,7 +1823,9 @@
       const inner = frame.querySelector('.picture-frame-inner');
       const rotateInput = slot.querySelector('.frame-rotate');
       const rotateVal = slot.querySelector('.frame-rotate-val');
-      const s = assignments[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+      const scaleInput = slot.querySelector('.frame-scale');
+      const scaleVal = slot.querySelector('.frame-scale-val');
+      const s = assignments[id] || { itemId: null, dx: 0, dy: 0, rotation: 0, scale: 1 };
       const item = s.itemId ? gallery.find(x => x.id === s.itemId) : null;
       inner.innerHTML = '';
       if (item) {
@@ -1830,17 +1841,20 @@
       }
       rotateInput.value = s.rotation;
       rotateVal.textContent = s.rotation + '°';
+      const scalePct = Math.round(s.scale * 100);
+      scaleInput.value = scalePct;
+      scaleVal.textContent = scalePct + '%';
       applyFrameTransform(slot, frame, s);
     });
   }
 
   function getFrameState(id) {
     const map = loadFrames();
-    return map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+    return map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0, scale: 1 };
   }
   function setFrameState(id, patch) {
     const map = loadFrames();
-    const current = map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0 };
+    const current = map[id] || { itemId: null, dx: 0, dy: 0, rotation: 0, scale: 1 };
     map[id] = { ...current, ...patch };
     persistFrames(map);
     return map[id];
@@ -1883,6 +1897,8 @@
     const frame = slot.querySelector('.picture-frame');
     const rotateInput = slot.querySelector('.frame-rotate');
     const rotateVal = slot.querySelector('.frame-rotate-val');
+    const scaleInput = slot.querySelector('.frame-scale');
+    const scaleVal = slot.querySelector('.frame-scale-val');
 
     let drag = null;
     let wasDragged = false;
@@ -1921,6 +1937,12 @@
       const rotation = +rotateInput.value;
       rotateVal.textContent = rotation + '°';
       const s = setFrameState(id, { rotation });
+      applyFrameTransform(slot, frame, s);
+    });
+    scaleInput.addEventListener('input', () => {
+      const pct = +scaleInput.value;
+      scaleVal.textContent = pct + '%';
+      const s = setFrameState(id, { scale: pct / 100 });
       applyFrameTransform(slot, frame, s);
     });
   });
