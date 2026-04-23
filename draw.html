@@ -405,6 +405,12 @@
   .gold-sparkle.s4 { bottom: 28%; right: 12%; font-size: 16px; animation-delay: 0.4s; }
   .gold-sparkle.s5 { top: 50%; left: 8%; font-size: 9px; animation-delay: 2.2s; }
   .gold-sparkle.s6 { top: 40%; right: 6%; font-size: 11px; animation-delay: 2.7s; }
+  .gold-sparkle.gs1 { top: 5%; left: 4%; font-size: 14px; animation-delay: 0.2s; }
+  .gold-sparkle.gs2 { top: 4%; right: 12%; font-size: 10px; animation-delay: 1.1s; }
+  .gold-sparkle.gs3 { bottom: 6%; left: 8%; font-size: 12px; animation-delay: 1.8s; }
+  .gold-sparkle.gs4 { bottom: 4%; right: 6%; font-size: 16px; animation-delay: 0.6s; }
+  .gold-sparkle.gs5 { top: 50%; left: 3%; font-size: 10px; animation-delay: 2.3s; }
+  .gold-sparkle.gs6 { top: 60%; right: 3%; font-size: 11px; animation-delay: 2.9s; }
   @keyframes twinkle {
     0%, 100% { opacity: 0.35; transform: scale(0.9); }
     50% { opacity: 1; transform: scale(1.1); }
@@ -469,7 +475,24 @@
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
-  .gallery-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .gallery-title-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .gallery-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: var(--text);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .gallery-title::before {
+    content: '✦';
+    color: #e5b84a;
+    font-size: 18px;
+    text-shadow: 0 0 12px rgba(229, 184, 74, 0.6);
+  }
+  .gallery-title-accent {
+    width: 50px; height: 2px;
+    background: linear-gradient(90deg, #e5b84a 0%, #f4d77a 50%, transparent 100%);
+    border-radius: 2px;
+    margin-left: 32px;
+    box-shadow: 0 0 6px rgba(229, 184, 74, 0.5);
+  }
   .gallery-grid {
     flex: 1; overflow-y: auto;
     padding: 24px 28px;
@@ -749,8 +772,17 @@
     </div>
   </div>
   <div id="galleryView" class="hidden">
+    <span class="gold-sparkle gs1">✧</span>
+    <span class="gold-sparkle gs2">✦</span>
+    <span class="gold-sparkle gs3">✧</span>
+    <span class="gold-sparkle gs4">✦</span>
+    <span class="gold-sparkle gs5">✧</span>
+    <span class="gold-sparkle gs6">✦</span>
     <div class="gallery-header">
-      <div class="gallery-title">Gallery</div>
+      <div class="gallery-title-wrap">
+        <div class="gallery-title">Gallery</div>
+        <div class="gallery-title-accent"></div>
+      </div>
       <button id="galleryClose">Close</button>
     </div>
     <div id="galleryGrid" class="gallery-grid"></div>
