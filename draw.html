@@ -97,23 +97,23 @@
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; -webkit-font-smoothing: antialiased; }
   #toolbar {
-    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    padding: 10px 16px;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: 8px 12px;
     background: linear-gradient(180deg, var(--surface) 0%, var(--toolbar-grad-end) 100%);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 4px 12px rgba(0,0,0,0.25);
   }
   #toolbar label {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
     text-transform: uppercase; color: var(--text-dim);
   }
-  .divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+  .divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 0; }
   button {
     background: var(--elevated); color: var(--text);
     border: 1px solid var(--border-strong);
-    padding: 7px 14px; border-radius: 8px;
-    font-size: 13px; font-weight: 500; font-family: inherit;
+    padding: 6px 11px; border-radius: 7px;
+    font-size: 12px; font-weight: 500; font-family: inherit;
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
   }
@@ -135,7 +135,7 @@
 
   input[type="range"] {
     -webkit-appearance: none; appearance: none;
-    width: 110px; height: 4px;
+    width: 90px; height: 4px;
     background: var(--border-strong); border-radius: 999px;
     outline: none; cursor: pointer;
   }
@@ -154,16 +154,16 @@
   }
 
   .value-tag {
-    display: inline-block; min-width: 28px;
-    padding: 2px 8px; border-radius: 999px;
+    display: inline-block; min-width: 24px;
+    padding: 2px 7px; border-radius: 999px;
     background: var(--surface-2); border: 1px solid var(--border);
-    font-size: 11px; font-weight: 600; text-align: center;
+    font-size: 10px; font-weight: 600; text-align: center;
     color: var(--text); font-variant-numeric: tabular-nums;
     text-transform: none; letter-spacing: 0;
   }
 
   .accordion { position: relative; }
-  .accordion-toggle { display: flex; align-items: center; gap: 10px; min-width: 140px; justify-content: space-between; }
+  .accordion-toggle { display: flex; align-items: center; gap: 8px; min-width: 120px; justify-content: space-between; }
   .accordion-toggle .tool-name { font-weight: 600; color: var(--text); }
   .accordion-toggle .tool-prefix { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
   .chevron { font-size: 9px; color: var(--text-dim); transition: transform 0.2s; }
@@ -197,11 +197,11 @@
   .recent-colors .swatch:hover { border-color: var(--accent); transform: scale(1.12); }
   .recent-colors .empty { font-size: 10px; color: var(--text-mute); font-style: italic; text-transform: uppercase; letter-spacing: 0.05em; }
 
-  .actions { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+  .actions { display: flex; gap: 5px; margin-left: auto; align-items: center; }
   .actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px var(--accent-glow); }
   .actions button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-  .settings-btn { min-width: 36px; padding: 7px 10px; font-size: 15px; }
+  .settings-btn { min-width: 32px; padding: 6px 9px; font-size: 14px; }
   .accordion-panel.right { left: auto; right: 0; }
   .settings-section { padding: 4px 2px; }
   .settings-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); padding: 6px 10px 4px; }
