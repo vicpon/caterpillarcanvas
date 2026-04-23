@@ -691,6 +691,52 @@
     color: #e5b84a;
     text-shadow: 0 0 10px rgba(229, 184, 74, 0.5);
   }
+
+  #streakPopup {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 230;
+    animation: fadeIn 0.2s ease-out;
+  }
+  #streakPopup.hidden { display: none; }
+  .streak-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 36px 26px;
+    min-width: 280px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.6), 0 0 0 1px rgba(255, 140, 40, 0.12) inset;
+    animation: streakIn 0.22s ease-out;
+  }
+  @keyframes streakIn { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+  .streak-close {
+    position: absolute; top: 8px; right: 10px;
+    min-width: auto; padding: 4px 9px; font-size: 13px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text-dim);
+  }
+  .streak-close:hover { color: var(--text); background: var(--elevated); border-color: var(--border); }
+  .streak-flame {
+    font-size: 60px; line-height: 1;
+    margin-bottom: 6px;
+    animation: flicker 1.4s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 12px rgba(255, 140, 40, 0.55));
+  }
+  @keyframes flicker { from { transform: scale(1) rotate(-1deg); } to { transform: scale(1.06) rotate(1deg); } }
+  .streak-count { font-size: 56px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+  .streak-label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin-top: 6px; font-weight: 700; }
+  .streak-sub { font-size: 13px; color: var(--text-dim); margin-top: 16px; line-height: 1.4; min-height: 1.4em; }
+  .streak-sub strong { color: #e5b84a; }
+
+  .streak-btn { min-width: 32px; padding: 6px 9px; font-size: 14px; line-height: 1; }
+  .menu-top-right {
+    position: absolute; top: 20px; right: 20px;
+    display: flex; align-items: center; gap: 8px;
+    z-index: 6;
+  }
   .save-flash { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
 
   .start-frame-row { display: flex; align-items: center; gap: 32px; margin-top: 6px; }
@@ -941,7 +987,9 @@
       <div class="profile-avatar" id="profileAvatar" title="Edit profile"><span class="profile-initials">A</span></div>
       <button class="profile-name" id="profileNameBtn" title="Click to edit">Artist</button>
     </div>
-    <div id="startMenuSettings" class="accordion" style="position: absolute; top: 20px; right: 20px;">
+    <div class="menu-top-right">
+      <button id="streakBtn" class="settings-btn streak-btn" title="Log-in streak">🔥</button>
+      <div id="startMenuSettings" class="accordion" style="position: relative;">
       <button id="startSettingsToggle" class="settings-btn" title="Settings" aria-label="Settings">⚙</button>
       <div id="startSettingsPanel" class="accordion-panel right hidden">
         <div class="settings-section">
@@ -952,6 +1000,7 @@
           <button data-theme="midnight" class="theme-btn">Midnight</button>
           <button data-theme="sepia" class="theme-btn">Sepia</button>
         </div>
+      </div>
       </div>
     </div>
     <span class="gold-sparkle s1">✧</span>
@@ -1026,6 +1075,15 @@
       <button id="awardsClose">Close</button>
     </div>
     <div id="awardsGrid" class="awards-grid"></div>
+  </div>
+  <div id="streakPopup" class="hidden">
+    <div class="streak-card">
+      <button id="streakClose" class="streak-close" title="Close">✕</button>
+      <div class="streak-flame">🔥</div>
+      <div class="streak-count" id="streakCount">1</div>
+      <div class="streak-label">day streak</div>
+      <div class="streak-sub" id="streakSub"></div>
+    </div>
   </div>
   <div id="profileEditor" class="hidden">
     <div class="profile-editor-card">
@@ -2713,8 +2771,6 @@
 
   _origMenuShow.addEventListener('click', renderProfile);
 
-  renderProfile();
-
   const AWARDS = [
     { id: 'first',     title: 'First Sketch',     desc: 'Save your first drawing',      icon: '✎', target: 1 },
     { id: 'sketcher',  title: 'Sketcher',         desc: 'Save 5 drawings',              icon: '✦', target: 5 },
@@ -2728,7 +2784,14 @@
     { id: 'master',    title: 'Tool Master',      desc: 'Try every tool',               icon: '◇', target: TOOLS.length, source: 'tools' },
     { id: 'namer',     title: 'Name Yourself',    desc: 'Change your username',         icon: '❖', target: 1,  source: 'named' },
     { id: 'framed',    title: 'Framed',           desc: 'Fill both picture frames',     icon: '▣', target: 2,  source: 'frames' },
+    { id: 'streak3',   title: 'On a Roll',        desc: 'Log in 3 days in a row',       icon: '🔥', target: 3,  source: 'streak' },
+    { id: 'streak5',   title: 'Five Day Streak',  desc: 'Log in 5 days in a row',       icon: '🔥', target: 5,  source: 'streak' },
+    { id: 'streak7',   title: 'Week Long Streak', desc: 'Log in 7 days in a row',       icon: '🔥', target: 7,  source: 'streak' },
+    { id: 'streak14',  title: 'Two Week Streak',  desc: 'Log in 14 days in a row',      icon: '🔥', target: 14, source: 'streak' },
+    { id: 'streak30',  title: 'Monthly Streak',   desc: 'Log in 30 days in a row',      icon: '🔥', target: 30, source: 'streak' },
   ];
+
+  renderProfile();
 
   function computeAwardProgress(award, stats) {
     switch (award.source) {
@@ -2739,6 +2802,7 @@
       case 'tools':    return stats.toolsUsed;
       case 'named':    return stats.named;
       case 'frames':   return stats.framesFilled;
+      case 'streak':   return stats.maxStreak;
       default:         return stats.gallery;
     }
   }
@@ -2748,6 +2812,7 @@
     const profile = loadProfile();
     const usage = loadToolUsage();
     const frames = loadFrames();
+    const streak = loadStreak();
     return {
       gallery: gallery.length,
       fiveStar: gallery.filter(x => x.rating === 5).length,
@@ -2757,6 +2822,7 @@
       toolsUsed: Object.keys(usage).filter(k => usage[k] > 0).length,
       named: (profile.username && profile.username !== 'Artist') ? 1 : 0,
       framesFilled: ['left', 'right'].filter(k => frames[k] && frames[k].itemId).length,
+      maxStreak: streak.maxStreak || 0,
     };
   }
 
@@ -2791,6 +2857,82 @@
     awardsView.classList.add('hidden');
     startMenu.classList.remove('hidden');
   });
+
+  const STREAK_KEY = 'draw-streak-v1';
+  const STREAK_MILESTONES = [3, 5, 7, 14, 30];
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function yesterdayStr() {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function loadStreak() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STREAK_KEY) || '{}');
+      return { lastVisit: raw.lastVisit || null, currentStreak: raw.currentStreak || 0, maxStreak: raw.maxStreak || 0 };
+    } catch { return { lastVisit: null, currentStreak: 0, maxStreak: 0 }; }
+  }
+  function persistStreak(s) {
+    try { localStorage.setItem(STREAK_KEY, JSON.stringify(s)); } catch {}
+  }
+  function updateStreak() {
+    const today = todayStr();
+    const yesterday = yesterdayStr();
+    const s = loadStreak();
+    let isNewDay = false;
+    let continued = false;
+    if (s.lastVisit === today) {
+      // already counted today
+    } else if (s.lastVisit === yesterday) {
+      s.currentStreak = (s.currentStreak || 0) + 1;
+      s.lastVisit = today;
+      isNewDay = true; continued = true;
+    } else {
+      s.currentStreak = 1;
+      s.lastVisit = today;
+      isNewDay = true; continued = false;
+    }
+    if (s.currentStreak > s.maxStreak) s.maxStreak = s.currentStreak;
+    persistStreak(s);
+    return { ...s, isNewDay, continued };
+  }
+
+  const streakPopup = document.getElementById('streakPopup');
+  const streakCountEl = document.getElementById('streakCount');
+  const streakSubEl = document.getElementById('streakSub');
+
+  function showStreakPopup(info) {
+    streakCountEl.textContent = info.currentStreak;
+    const next = STREAK_MILESTONES.find(m => m > info.currentStreak);
+    let sub = '';
+    if (info && info.isNewDay && !info.continued) {
+      sub = 'A fresh start — welcome back.';
+    } else if (info && info.isNewDay) {
+      sub = `Nice! ${info.currentStreak === info.maxStreak ? 'That\'s your best streak yet.' : ''}`;
+    } else {
+      sub = `Best streak: <strong>${info.maxStreak}</strong> day${info.maxStreak === 1 ? '' : 's'}.`;
+    }
+    if (next) {
+      sub += `<br>${next - info.currentStreak} day${next - info.currentStreak === 1 ? '' : 's'} to the <strong>${next}-day</strong> milestone.`;
+    } else {
+      sub += '<br>You\'ve passed every streak milestone. 🔥';
+    }
+    streakSubEl.innerHTML = sub;
+    streakPopup.classList.remove('hidden');
+  }
+  function hideStreakPopup() { streakPopup.classList.add('hidden'); }
+
+  document.getElementById('streakBtn').addEventListener('click', () => {
+    const s = loadStreak();
+    showStreakPopup({ ...s, isNewDay: false, continued: true });
+  });
+  document.getElementById('streakClose').addEventListener('click', hideStreakPopup);
+
+  const _streakInfo = updateStreak();
+  if (_streakInfo.isNewDay) showStreakPopup(_streakInfo);
 </script>
 </body>
 </html>
