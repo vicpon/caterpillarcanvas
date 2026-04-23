@@ -353,6 +353,8 @@
   .stencil-toolbar button.mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .stencil-toolbar .shape-btn { min-width: 32px; padding: 4px 6px; font-size: 15px; line-height: 1; }
   .stencil-toolbar .shape-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .stencil-toolbar .line-btn { padding: 4px 10px; font-size: 11px; }
+  .stencil-toolbar .line-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   .stencil-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .stencil-svg.hidden { display: none; }
@@ -800,6 +802,7 @@
         <button id="chalk">Chalk</button>
         <button id="spray">Spray</button>
         <button id="shape">Shape</button>
+        <button id="line">Line</button>
         <button id="text">Text</button>
         <button id="stencil">Stencil</button>
         <button id="eraser">Eraser</button>
@@ -861,6 +864,13 @@
             <button id="newThemeBtn" title="New theme">🎲</button>
             <button id="closeThemeBtn" title="Close">✕</button>
           </div>
+        </div>
+        <div id="lineToolbar" class="stencil-toolbar hidden">
+          <span class="ov-label">Line</span>
+          <button class="line-btn active" data-line="straight">Straight</button>
+          <button class="line-btn" data-line="curved">Curved</button>
+          <button class="line-btn" data-line="zigzag">Zigzag</button>
+          <button class="line-btn" data-line="wavy">Wavy</button>
         </div>
         <div id="shapeToolbar" class="stencil-toolbar hidden">
           <span class="ov-label">Shape</span>
@@ -961,9 +971,9 @@
     renderRecentColors();
   }
 
-  const TOOLS = ['pen', 'ink', 'marker', 'highlighter', 'chalk', 'spray', 'shape', 'text', 'stencil', 'eraser'];
+  const TOOLS = ['pen', 'ink', 'marker', 'highlighter', 'chalk', 'spray', 'shape', 'line', 'text', 'stencil', 'eraser'];
   const BUFFERED = new Set(['pen', 'ink']);
-  const NON_DRAW = new Set(['text', 'stencil', 'shape']);
+  const NON_DRAW = new Set(['text', 'stencil', 'shape', 'line']);
   const toolBtns = {};
   TOOLS.forEach(t => toolBtns[t] = document.getElementById(t));
 
@@ -1148,6 +1158,77 @@
     shapeFillBtn.classList.toggle('active', shapeFill);
   });
 
+  let lineKind = 'straight';
+  let lineStart = null;
+  let lineEnd = null;
+  let lineBaseImage = null;
+  const lineToolbar = document.getElementById('lineToolbar');
+
+  function drawLineTool(c, kind, a, b) {
+    c.globalAlpha = opacityInput.value / 100;
+    c.strokeStyle = colorInput.value;
+    c.lineWidth = +sizeInput.value;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.hypot(dx, dy);
+    c.beginPath();
+    if (kind === 'straight' || dist < 1) {
+      c.moveTo(a.x, a.y);
+      c.lineTo(b.x, b.y);
+    } else {
+      const nx = -dy / dist, ny = dx / dist;
+      if (kind === 'curved') {
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const cpx = mx + nx * dist * 0.3;
+        const cpy = my + ny * dist * 0.3;
+        c.moveTo(a.x, a.y);
+        c.quadraticCurveTo(cpx, cpy, b.x, b.y);
+      } else if (kind === 'zigzag') {
+        const seg = Math.max(4, Math.floor(dist / 25));
+        const amp = Math.max(8, Math.min(20, dist / 10));
+        c.moveTo(a.x, a.y);
+        for (let i = 1; i < seg; i++) {
+          const t = i / seg;
+          const side = (i % 2 === 0) ? 1 : -1;
+          const px = a.x + dx * t + nx * amp * side;
+          const py = a.y + dy * t + ny * amp * side;
+          c.lineTo(px, py);
+        }
+        c.lineTo(b.x, b.y);
+      } else if (kind === 'wavy') {
+        const waves = Math.max(2, Math.floor(dist / 50));
+        const amp = Math.max(6, Math.min(16, dist / 14));
+        const steps = Math.max(40, Math.floor(dist / 4));
+        c.moveTo(a.x, a.y);
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const bx = a.x + dx * t;
+          const by = a.y + dy * t;
+          const wave = Math.sin(t * waves * Math.PI * 2) * amp;
+          c.lineTo(bx + nx * wave, by + ny * wave);
+        }
+      }
+    }
+    c.stroke();
+  }
+
+  function renderLinePreview() {
+    if (!lineBaseImage) return;
+    ctx.putImageData(lineBaseImage, 0, 0);
+    ctx.save();
+    applyStencilClip(ctx);
+    drawLineTool(ctx, lineKind, lineStart, lineEnd);
+    ctx.restore();
+  }
+
+  document.querySelectorAll('.line-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      lineKind = b.dataset.line;
+      document.querySelectorAll('.line-btn').forEach(x => x.classList.toggle('active', x === b));
+    });
+  });
+
   const textOverlay = document.getElementById('textOverlay');
   const textInputEl = document.getElementById('textInput');
   const textToolbar = document.getElementById('textToolbar');
@@ -1259,6 +1340,17 @@
       renderShapePreview();
       return;
     }
+    if (tool === 'line') {
+      drawing = true;
+      const p = pos(e);
+      lineStart = p;
+      lineEnd = p;
+      snapshot();
+      addRecentColor(colorInput.value);
+      lineBaseImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      renderLinePreview();
+      return;
+    }
     drawing = true;
     snapshot();
     if (tool !== 'eraser') addRecentColor(colorInput.value);
@@ -1298,6 +1390,11 @@
       renderShapePreview();
       return;
     }
+    if (tool === 'line') {
+      lineEnd = pos(e);
+      renderLinePreview();
+      return;
+    }
     const p = pos(e);
     if (isBuffered()) {
       drawBuffered(last, p);
@@ -1311,6 +1408,7 @@
   function end() {
     if (tool === 'stencil') { drawing = false; stencilDragOrigin = null; return; }
     if (tool === 'shape') { drawing = false; shapeBaseImage = null; return; }
+    if (tool === 'line') { drawing = false; lineBaseImage = null; return; }
     if (drawing && isBuffered()) composite();
     drawing = false;
     last = null;
@@ -1467,6 +1565,7 @@
     setPanelOpen(false);
     stencilToolbar.classList.toggle('hidden', t !== 'stencil');
     shapeToolbar.classList.toggle('hidden', t !== 'shape');
+    lineToolbar.classList.toggle('hidden', t !== 'line');
     if (t !== 'text' && textState.active) hideTextInput();
   }));
 
