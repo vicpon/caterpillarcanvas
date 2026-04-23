@@ -321,6 +321,9 @@
   #textOverlay { position: absolute; inset: 0; pointer-events: none; }
   #textOverlay.hidden { display: none; }
   #textToolbar.fixed-left { transform: none; }
+  .text-drag-handle { cursor: grab; padding: 4px 6px; min-width: auto; font-size: 12px; letter-spacing: -2px; color: var(--text-dim); }
+  .text-drag-handle:hover { color: var(--text); }
+  .text-drag-handle:active { cursor: grabbing; }
   .text-edit {
     position: absolute;
     min-width: 60px; min-height: 1.2em;
@@ -718,10 +721,112 @@
     padding: 10px 16px;
     border-top: 1px solid var(--border);
   }
+
+  #startProfile {
+    position: absolute; top: 20px; left: 20px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 6;
+  }
+  .profile-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--elevated);
+    border: 2px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    color: var(--text-dim);
+    font-size: 16px; font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .profile-avatar:hover { border-color: var(--accent); transform: scale(1.05); }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile-name {
+    background: transparent; border: 1px solid transparent;
+    padding: 6px 12px; border-radius: 8px;
+    color: var(--text); font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .profile-name:hover { background: var(--elevated); border-color: var(--border); }
+
+  #profileEditor {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 260; animation: fadeIn 0.15s ease-out;
+  }
+  #profileEditor.hidden { display: none; }
+  .profile-editor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: min(520px, 92vw);
+    max-height: 86vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  }
+  .profile-editor-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px; font-weight: 600; color: var(--text);
+  }
+  .profile-editor-section { padding: 14px 18px; }
+  .profile-editor-section + .profile-editor-section { border-top: 1px solid var(--border); }
+  .profile-editor-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 8px;
+  }
+  #profileUsernameInput {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: inherit; font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #profileUsernameInput:focus { border-color: var(--accent); }
+  .profile-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    max-height: 260px; overflow-y: auto;
+    padding: 4px;
+  }
+  .profile-avatar-option {
+    aspect-ratio: 1;
+    padding: 0;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    min-width: auto;
+    transition: border-color 0.12s, transform 0.1s;
+  }
+  .profile-avatar-option:hover { border-color: var(--accent); transform: scale(1.05); }
+  .profile-avatar-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+  .profile-avatar-option img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile-avatar-empty { grid-column: 1 / -1; padding: 30px 10px; text-align: center; color: var(--text-mute); font-size: 13px; }
+  .profile-editor-footer {
+    display: flex; justify-content: space-between; gap: 6px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
   <div id="startMenu">
+    <div id="startProfile">
+      <div class="profile-avatar" id="profileAvatar" title="Edit profile"><span class="profile-initials">A</span></div>
+      <button class="profile-name" id="profileNameBtn" title="Click to edit">Artist</button>
+    </div>
     <div id="startMenuSettings" class="accordion" style="position: absolute; top: 20px; right: 20px;">
       <button id="startSettingsToggle" class="settings-btn" title="Settings" aria-label="Settings">⚙</button>
       <div id="startSettingsPanel" class="accordion-panel right hidden">
@@ -790,6 +895,26 @@
       </div>
     </div>
     <button id="startGallery" class="gallery-link">View Gallery</button>
+  </div>
+  <div id="profileEditor" class="hidden">
+    <div class="profile-editor-card">
+      <div class="profile-editor-header">
+        <span>Your Profile</span>
+        <button id="profileEditorClose">✕</button>
+      </div>
+      <div class="profile-editor-section">
+        <div class="profile-editor-label">Username</div>
+        <input type="text" id="profileUsernameInput" placeholder="Your name" maxlength="30">
+      </div>
+      <div class="profile-editor-section">
+        <div class="profile-editor-label">Avatar — pick from your gallery</div>
+        <div id="profileAvatarGrid" class="profile-avatar-grid"></div>
+      </div>
+      <div class="profile-editor-footer">
+        <button id="profileClearAvatar">Use initials</button>
+        <button id="profileSave" class="primary">Save</button>
+      </div>
+    </div>
   </div>
   <div id="framePicker" class="hidden">
     <div class="frame-picker-card">
@@ -928,6 +1053,8 @@
         </div>
         <div id="textOverlay" class="hidden">
           <div class="overlay-toolbar fixed-left" id="textToolbar">
+            <button id="textDragHandle" class="text-drag-handle" title="Drag to move">⋮⋮</button>
+            <span class="ov-divider"></span>
             <span class="ov-label">Font</span>
             <input type="range" id="textSize" min="10" max="140" value="28">
             <span id="textSizeVal" class="value-tag">28</span>
@@ -1266,19 +1393,23 @@
   const textSizeValEl = document.getElementById('textSizeVal');
   const textState = { active: false, x: 0, y: 0 };
 
+  function positionTextOverlay() {
+    textInputEl.style.left = textState.x + 'px';
+    textInputEl.style.top = textState.y + 'px';
+    textToolbar.style.left = textState.x + 'px';
+    textToolbar.style.top = Math.max(6, textState.y - 48) + 'px';
+  }
+
   function startTextInsert(e) {
     const p = pos(e);
     textState.active = true;
     textState.x = p.x;
     textState.y = p.y;
     textInputEl.textContent = '';
-    textInputEl.style.left = p.x + 'px';
-    textInputEl.style.top = p.y + 'px';
     textInputEl.style.fontSize = textSizeInput.value + 'px';
     textInputEl.style.color = colorInput.value;
     textInputEl.style.opacity = opacityInput.value / 100;
-    textToolbar.style.left = p.x + 'px';
-    textToolbar.style.top = Math.max(6, p.y - 48) + 'px';
+    positionTextOverlay();
     textOverlay.classList.remove('hidden');
     setTimeout(() => textInputEl.focus(), 0);
   }
@@ -1326,6 +1457,32 @@
     if (e.key === 'Escape') { e.preventDefault(); hideTextInput(); }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyTextInsert(); }
   });
+
+  const textDragHandle = document.getElementById('textDragHandle');
+  let textDrag = null;
+  textDragHandle.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    textDragHandle.setPointerCapture(e.pointerId);
+    const r = canvas.getBoundingClientRect();
+    textDrag = {
+      mouseX: e.clientX, mouseY: e.clientY,
+      origX: textState.x, origY: textState.y,
+      sx: canvas.width / r.width,
+      sy: canvas.height / r.height,
+    };
+  });
+  textDragHandle.addEventListener('pointermove', (e) => {
+    if (!textDrag) return;
+    textState.x = textDrag.origX + (e.clientX - textDrag.mouseX) * textDrag.sx;
+    textState.y = textDrag.origY + (e.clientY - textDrag.mouseY) * textDrag.sy;
+    positionTextOverlay();
+  });
+  const endTextDrag = (e) => {
+    textDrag = null;
+    try { textDragHandle.releasePointerCapture(e.pointerId); } catch {}
+  };
+  textDragHandle.addEventListener('pointerup', endTextDrag);
+  textDragHandle.addEventListener('pointercancel', endTextDrag);
 
   function composite() {
     ctx.putImageData(baseImage, 0, 0);
@@ -2018,6 +2175,7 @@
     galleryView.classList.add('hidden');
     startMenu.classList.remove('hidden');
     renderFrames();
+    if (typeof renderProfile === 'function') renderProfile();
   });
 
   const FRAMES_KEY = 'draw-frames-v1';
@@ -2205,6 +2363,102 @@
 
   const _origMenuShow = document.getElementById('menuBtn');
   _origMenuShow.addEventListener('click', renderFrames);
+
+  const PROFILE_KEY = 'draw-profile-v1';
+  const profileAvatarEl = document.getElementById('profileAvatar');
+  const profileNameBtn = document.getElementById('profileNameBtn');
+  const profileEditor = document.getElementById('profileEditor');
+  const profileUsernameInput = document.getElementById('profileUsernameInput');
+  const profileAvatarGrid = document.getElementById('profileAvatarGrid');
+  let stagedAvatarId = null;
+
+  function loadProfile() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+      return { username: raw.username || 'Artist', avatarItemId: raw.avatarItemId || null };
+    } catch { return { username: 'Artist', avatarItemId: null }; }
+  }
+  function persistProfile(p) {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch {}
+  }
+
+  function renderProfile() {
+    const p = loadProfile();
+    profileNameBtn.textContent = p.username;
+    profileAvatarEl.innerHTML = '';
+    if (p.avatarItemId) {
+      const item = loadGallery().find(x => x.id === p.avatarItemId);
+      if (item) {
+        const img = document.createElement('img');
+        img.src = item.dataUrl;
+        img.alt = 'Profile picture';
+        profileAvatarEl.appendChild(img);
+        return;
+      }
+    }
+    const span = document.createElement('span');
+    span.className = 'profile-initials';
+    span.textContent = (p.username.trim().charAt(0) || 'A').toUpperCase();
+    profileAvatarEl.appendChild(span);
+  }
+
+  function renderAvatarGrid() {
+    const items = loadGallery();
+    profileAvatarGrid.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'profile-avatar-empty';
+      empty.textContent = 'No gallery drawings yet. Save some to use as your avatar.';
+      profileAvatarGrid.appendChild(empty);
+      return;
+    }
+    items.forEach(item => {
+      const b = document.createElement('button');
+      b.className = 'profile-avatar-option' + (stagedAvatarId === item.id ? ' selected' : '');
+      const img = document.createElement('img');
+      img.src = item.dataUrl;
+      b.appendChild(img);
+      b.addEventListener('click', () => {
+        stagedAvatarId = item.id;
+        renderAvatarGrid();
+      });
+      profileAvatarGrid.appendChild(b);
+    });
+  }
+
+  function openProfileEditor() {
+    const p = loadProfile();
+    profileUsernameInput.value = p.username;
+    stagedAvatarId = p.avatarItemId;
+    renderAvatarGrid();
+    profileEditor.classList.remove('hidden');
+    setTimeout(() => profileUsernameInput.focus(), 0);
+  }
+  function closeProfileEditor() {
+    profileEditor.classList.add('hidden');
+  }
+
+  profileNameBtn.addEventListener('click', openProfileEditor);
+  profileAvatarEl.addEventListener('click', openProfileEditor);
+  document.getElementById('profileEditorClose').addEventListener('click', closeProfileEditor);
+  document.getElementById('profileClearAvatar').addEventListener('click', () => {
+    stagedAvatarId = null;
+    renderAvatarGrid();
+  });
+  document.getElementById('profileSave').addEventListener('click', () => {
+    const username = (profileUsernameInput.value.trim() || 'Artist').slice(0, 30);
+    persistProfile({ username, avatarItemId: stagedAvatarId });
+    closeProfileEditor();
+    renderProfile();
+  });
+  profileUsernameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('profileSave').click();
+    if (e.key === 'Escape') closeProfileEditor();
+  });
+
+  _origMenuShow.addEventListener('click', renderProfile);
+
+  renderProfile();
 </script>
 </body>
 </html>
