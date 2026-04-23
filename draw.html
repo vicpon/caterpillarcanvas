@@ -1241,6 +1241,10 @@
           <button class="shape-btn" data-shape="check" title="Check">✓</button>
           <span class="ov-divider"></span>
           <button id="shapeFill" class="mode-btn active" title="Fill or outline">Fill</button>
+          <span class="ov-divider"></span>
+          <span class="ov-label">Rotate</span>
+          <input type="range" id="shapeRotation" min="-180" max="180" value="0">
+          <span id="shapeRotationVal" class="value-tag">0°</span>
         </div>
         <div id="stencilToolbar" class="stencil-toolbar hidden">
           <span class="ov-label">Stencil</span>
@@ -1395,15 +1399,25 @@
 
   let shapeKind = 'rect';
   let shapeFill = true;
+  let shapeRotation = 0;
   let shapeStart = null;
   let shapeEnd = null;
   let shapeBaseImage = null;
   const shapeToolbar = document.getElementById('shapeToolbar');
   const shapeFillBtn = document.getElementById('shapeFill');
+  const shapeRotationInput = document.getElementById('shapeRotation');
+  const shapeRotationVal = document.getElementById('shapeRotationVal');
 
   function drawShape(c, kind, a, b) {
     const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
     const w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    c.save();
+    if (shapeRotation !== 0) {
+      c.translate(cx, cy);
+      c.rotate(shapeRotation * Math.PI / 180);
+      c.translate(-cx, -cy);
+    }
     c.globalAlpha = opacityInput.value / 100;
     c.fillStyle = colorInput.value;
     c.strokeStyle = colorInput.value;
@@ -1493,6 +1507,7 @@
         c.stroke();
         break;
     }
+    c.restore();
   }
 
   function renderShapePreview() {
@@ -1514,6 +1529,11 @@
     shapeFill = !shapeFill;
     shapeFillBtn.textContent = shapeFill ? 'Fill' : 'Outline';
     shapeFillBtn.classList.toggle('active', shapeFill);
+  });
+  shapeRotationInput.addEventListener('input', () => {
+    shapeRotation = +shapeRotationInput.value;
+    shapeRotationVal.textContent = shapeRotation + '°';
+    if (tool === 'shape' && shapeBaseImage) renderShapePreview();
   });
 
   let lineKind = 'straight';
@@ -1722,6 +1742,9 @@
       const p = pos(e);
       shapeStart = p;
       shapeEnd = p;
+      shapeRotation = 0;
+      shapeRotationInput.value = 0;
+      shapeRotationVal.textContent = '0°';
       snapshot();
       addRecentColor(colorInput.value);
       shapeBaseImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1795,7 +1818,7 @@
 
   function end() {
     if (tool === 'stencil') { drawing = false; stencilDragOrigin = null; return; }
-    if (tool === 'shape') { drawing = false; shapeBaseImage = null; return; }
+    if (tool === 'shape') { drawing = false; return; }
     if (tool === 'line') { drawing = false; lineBaseImage = null; return; }
     if (drawing && isBuffered()) composite();
     drawing = false;
@@ -2009,6 +2032,7 @@
   applyToolSort();
 
   TOOLS.forEach(t => toolBtns[t].addEventListener('click', () => {
+    if (tool === 'shape' && shapeBaseImage) shapeBaseImage = null;
     tool = t;
     bumpToolUsage(t);
     TOOLS.forEach(x => toolBtns[x].classList.toggle('active', x === t));
