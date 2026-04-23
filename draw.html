@@ -951,6 +951,7 @@
       <button id="toolsToggle" class="accordion-toggle"><span><span class="tool-prefix">Tool</span><span class="tool-name" id="currentToolLabel">Pen</span></span><span class="chevron">▾</span></button>
       <div id="toolsPanel" class="accordion-panel hidden">
         <button id="pen" class="active">Pen</button>
+        <button id="pencil">Pencil</button>
         <button id="ink">Ink</button>
         <button id="marker">Marker</button>
         <button id="highlighter">Highlighter</button>
@@ -1128,7 +1129,7 @@
     renderRecentColors();
   }
 
-  const TOOLS = ['pen', 'ink', 'marker', 'highlighter', 'chalk', 'spray', 'shape', 'line', 'text', 'stencil', 'eraser'];
+  const TOOLS = ['pen', 'pencil', 'ink', 'marker', 'highlighter', 'chalk', 'spray', 'shape', 'line', 'text', 'stencil', 'eraser'];
   const BUFFERED = new Set(['pen', 'ink']);
   const NON_DRAW = new Set(['text', 'stencil', 'shape', 'line']);
   const toolBtns = {};
@@ -1636,6 +1637,25 @@
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
+    } else if (tool === 'pencil') {
+      const dist = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+      ctx.strokeStyle = colorInput.value;
+      ctx.lineWidth = Math.max(0.6, size * 0.5);
+      ctx.globalAlpha = op * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.fillStyle = colorInput.value;
+      const grains = Math.max(1, Math.floor(dist / 2));
+      for (let i = 0; i < grains; i++) {
+        const t = Math.random();
+        const spread = size * 0.55;
+        const gx = a.x + (b.x - a.x) * t + (Math.random() - 0.5) * spread;
+        const gy = a.y + (b.y - a.y) * t + (Math.random() - 0.5) * spread;
+        ctx.globalAlpha = op * (0.08 + Math.random() * 0.22);
+        ctx.fillRect(gx, gy, 1, 1);
+      }
     } else if (tool === 'marker') {
       ctx.globalAlpha = op * 0.5;
       ctx.strokeStyle = colorInput.value;
