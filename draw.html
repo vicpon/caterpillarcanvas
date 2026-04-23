@@ -511,9 +511,27 @@
     overflow: hidden;
     box-shadow: 0 6px 18px rgba(0,0,0,0.25);
     transition: transform 0.15s, box-shadow 0.15s;
+    display: flex; flex-direction: column;
   }
   .gallery-item:hover { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(0,0,0,0.3); }
   .gallery-item img { width: 100%; display: block; }
+  .gallery-rating {
+    display: flex; align-items: center; justify-content: center;
+    gap: 2px;
+    padding: 7px 10px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .gallery-star {
+    cursor: pointer;
+    font-size: 16px; line-height: 1;
+    color: var(--text-mute);
+    background: none; border: none;
+    padding: 2px 3px; min-width: auto; border-radius: 4px;
+    transition: color 0.12s, transform 0.12s;
+  }
+  .gallery-star.filled { color: #f59e0b; text-shadow: 0 0 5px rgba(245, 158, 11, 0.5); }
+  .gallery-star:hover { transform: scale(1.2); color: #f59e0b; background: transparent; border-color: transparent; }
   .gallery-theme-bubble {
     position: absolute;
     top: 10px; left: 10px; max-width: calc(100% - 60px);
@@ -1951,6 +1969,30 @@
         renderGallery();
       });
       cell.appendChild(del);
+
+      const rating = document.createElement('div');
+      rating.className = 'gallery-rating';
+      const current = item.rating || 0;
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('button');
+        star.className = 'gallery-star' + (i <= current ? ' filled' : '');
+        star.textContent = '★';
+        star.title = `${i} star${i > 1 ? 's' : ''}`;
+        star.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const next = (item.rating || 0) === i ? 0 : i;
+          const all = loadGallery();
+          const idx = all.findIndex(x => x.id === item.id);
+          if (idx !== -1) {
+            all[idx].rating = next;
+            persistGallery(all);
+            renderGallery();
+          }
+        });
+        rating.appendChild(star);
+      }
+      cell.appendChild(rating);
+
       galleryGrid.appendChild(cell);
     });
   }
