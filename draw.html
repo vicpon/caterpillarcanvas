@@ -732,6 +732,29 @@
   .streak-sub strong { color: #e5b84a; }
 
   .streak-btn { min-width: 32px; padding: 6px 9px; font-size: 14px; line-height: 1; }
+
+  #confirmDialog {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 280;
+    animation: fadeIn 0.15s ease-out;
+  }
+  #confirmDialog.hidden { display: none; }
+  .confirm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px 18px;
+    width: min(380px, 92vw);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    animation: streakIn 0.18s ease-out;
+  }
+  .confirm-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .confirm-message { font-size: 13px; color: var(--text-dim); margin-bottom: 18px; line-height: 1.5; }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .confirm-actions .danger { background: #dc2626; border-color: #dc2626; color: #fff; box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3); }
+  .confirm-actions .danger:hover { background: #b91c1c; border-color: #b91c1c; }
   .menu-top-right {
     position: absolute; top: 20px; right: 20px;
     display: flex; align-items: center; gap: 8px;
@@ -1075,6 +1098,16 @@
       <button id="awardsClose">Close</button>
     </div>
     <div id="awardsGrid" class="awards-grid"></div>
+  </div>
+  <div id="confirmDialog" class="hidden">
+    <div class="confirm-card">
+      <div class="confirm-title" id="confirmTitle">Delete?</div>
+      <div class="confirm-message" id="confirmMessage"></div>
+      <div class="confirm-actions">
+        <button id="confirmCancel">Cancel</button>
+        <button id="confirmOk" class="danger">Delete</button>
+      </div>
+    </div>
   </div>
   <div id="streakPopup" class="hidden">
     <div class="streak-card">
@@ -2354,6 +2387,32 @@
     themeBubble.classList.add('hidden');
   });
 
+  const confirmDialog = document.getElementById('confirmDialog');
+  const confirmMessage = document.getElementById('confirmMessage');
+  const confirmTitle = document.getElementById('confirmTitle');
+  let confirmCallback = null;
+  function showConfirm(opts, onOk) {
+    const { title = 'Delete?', message = '', okLabel = 'Delete' } = opts;
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    document.getElementById('confirmOk').textContent = okLabel;
+    confirmCallback = onOk;
+    confirmDialog.classList.remove('hidden');
+  }
+  function closeConfirm() {
+    confirmDialog.classList.add('hidden');
+    confirmCallback = null;
+  }
+  document.getElementById('confirmOk').addEventListener('click', () => {
+    const cb = confirmCallback;
+    closeConfirm();
+    if (cb) cb();
+  });
+  document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
+  confirmDialog.addEventListener('click', (e) => {
+    if (e.target === confirmDialog) closeConfirm();
+  });
+
   const GALLERY_KEY = 'draw-gallery-v1';
   const galleryView = document.getElementById('galleryView');
   const galleryGrid = document.getElementById('galleryGrid');
@@ -2420,10 +2479,17 @@
       del.className = 'gallery-delete';
       del.textContent = '✕';
       del.title = 'Delete';
-      del.addEventListener('click', () => {
-        const next = loadGallery().filter(x => x.id !== item.id);
-        persistGallery(next);
-        renderGallery();
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showConfirm({
+          title: 'Delete drawing?',
+          message: 'This drawing will be removed from your gallery. This cannot be undone.',
+          okLabel: 'Delete',
+        }, () => {
+          const next = loadGallery().filter(x => x.id !== item.id);
+          persistGallery(next);
+          renderGallery();
+        });
       });
       cell.appendChild(del);
 
